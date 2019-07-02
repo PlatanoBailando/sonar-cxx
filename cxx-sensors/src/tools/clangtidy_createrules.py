@@ -217,6 +217,12 @@ def fix_local_urls(html, filename):
     return html
 
 
+def init_rules():
+    rules = et.Element('rules')
+    rules.append(get_clang_warnings_rule())
+    return rules
+
+
 def rstfile_to_description(path, filename, fix_urls):
     html = subprocess.check_output(
         ['pandoc', path, '--no-highlight', '-f', 'rst', '-t', 'html5'])
@@ -259,7 +265,7 @@ def rstfile_to_rule(path, fix_urls):
 
 
 def rstfiles_to_rules_xml(directory, fix_urls):
-    rules = et.Element('rules')
+    rules = init_rules()
     for subdir, _, files in os.walk(directory):
         for f in files:
             ext = os.path.splitext(f)[-1].lower()
@@ -268,6 +274,23 @@ def rstfiles_to_rules_xml(directory, fix_urls):
                 rules.append(rstfile_to_rule(rst_file_path, fix_urls))
     write_rules_xml(rules, sys.stdout)
 
+def get_clang_warnings_rule():
+    rule = et.Element('rule')
+    et.SubElement(rule,'key').text = 'clang-diagnostic-warning'
+    et.SubElement(rule,'name').text = 'clang-diagnostic-warning'
+    description = """
+    <div class="title">
+    <p>clang-tidy - clang-diagnostic-warning</p>
+    </div>
+    <h1 id="clang-diagnostic-warning">clang-diagnostic-warning</h1>
+    <p>Any warnings output by CLANG not toggable via activation switches
+    are captured by this rule.</p>
+    """
+    cdata = CDATA(description)
+    et.SubElement(rule, 'description').append(cdata)
+    et.SubElement(rule, 'severity').text = "MAJOR"
+    et.SubElement(rule, 'type').text = "BUG"
+    return rule
 
 def contains_required_fields(entry_value):
     FIELDS = ["!name", "!anonymous", "!superclasses",
@@ -363,7 +386,7 @@ def generate_description(diag_group_name, diagnostics):
 
 
 def diagnostics_to_rules_xml(json_file):
-    rules = et.Element('rules')
+    rules = init_rules()
 
     with open(json_file) as f:
         data = json.load(f)
